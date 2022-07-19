@@ -1,25 +1,37 @@
-
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:reactive_router/delegate/reactive_router_delegate.dart';
 
-class MainPage extends StatefulWidget {
+mixin Not {
+  final int a = 0;
+}
 
-  const MainPage({ Key? key }) : super(key: key);
+class MainPage extends StatefulWidget {
+  const MainPage({Key? key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _MainPageState();
-
 }
 
 class _MainPageState extends State<MainPage> {
-
   @override
   void initState() {
     print("init1");
     super.initState();
+  }
+
+  @override
+  void didUpdateWidget(MainPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    print("didUpdateWidget");
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    //上层 widget中的InheritedWidget改变(updateShouldNotify返回true)时会被调用。
+    //如果build中没有依赖InheritedWidget，则此回调不会被调用。
+    print("didChangeDependencies");
   }
 
   @override
@@ -30,12 +42,11 @@ class _MainPageState extends State<MainPage> {
       body: Center(
         child: CupertinoButton(
           onPressed: () {
-            ReactiveRouterDelegate.of(context).push("/a", clearStack: true);
+            ReactiveRouterDelegate.of(context).push("/a");
           },
           child: Text("点击"),
         ),
       ),
     );
   }
-
 }

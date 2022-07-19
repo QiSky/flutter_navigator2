@@ -1,40 +1,36 @@
-import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 
-class ReactiveRouterPage extends Page {
+class RouterMatch {
+  /// name
+  String? path;
 
   /// args
-  late Map<String,dynamic>? parameter;
+  Map<String, dynamic>? parameter;
 
   /// widgetBuilder
-  late final WidgetHandler handler;
+  final WidgetHandler? handler;
 
   Route? route;
 
-  late Completer<dynamic> completer;
-
-  ReactiveRouterPage({required LocalKey key, String? name, this.parameter, required this.handler, this.route})
-  : super(name: name, arguments: parameter, key: key);
-
-  @override
-  Route createRoute(BuildContext context) {
-    return route ?? CupertinoPageRoute(
-        settings: this,
-        builder: (BuildContext context) => handler.call(parameter));
+  RouterMatch({required this.path, this.parameter, this.handler}) {
+    route = CupertinoPageRoute(
+        settings: RouteSettings(name: path, arguments: parameter),
+        builder: (BuildContext context) => handler!.call(parameter));
   }
 
-  ReactiveRouterPage clone() {
-    return ReactiveRouterPage(key: ValueKey(name), name: name, parameter: parameter, handler: handler);
+  RouterMatch clone(
+      {String? path, Map<String, dynamic>? parameter, WidgetHandler? handler}) {
+    return RouterMatch(
+        path: path ?? this.path,
+        parameter: parameter ?? this.parameter,
+        handler: handler ?? this.handler);
   }
 
   @override
-  bool canUpdate(Page<dynamic> other) {
-    return other.runtimeType == runtimeType &&
-        other.key == key;
-  }
+  bool operator ==(Object other) => other is RouterMatch && other.path == path;
+
+  @override
+  int get hashCode => path.hashCode;
 }
 
-typedef WidgetHandler = Widget Function(Map<String,dynamic>? arguments);
+typedef WidgetHandler = Widget Function(Map<String, dynamic>? arguments);

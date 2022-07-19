@@ -1,71 +1,73 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:reactive_router/inherited_root_navigator.dart';
 import 'package:reactive_router/interceptor/route_interceptor.dart';
 import 'package:reactive_router/reactive_router_page.dart';
 
-class ReactiveRouterDelegate extends RouterDelegate<String>
-    with ChangeNotifier, PopNavigatorRouterDelegateMixin<String> {
+class ReactiveRouterDelegate extends RouterDelegate<RouterMatch>
+    with ChangeNotifier, PopNavigatorRouterDelegateMixin<RouterMatch> {
   ///单例
   static ReactiveRouterDelegate get instance => _getInstance()!;
   static ReactiveRouterDelegate? _instance;
 
   static const NOT_FOUND_PATH = '/404';
 
-  final key = GlobalKey<NavigatorState>();
-
   late WidgetHandler pageBuilder;
 
   List<RouteInterceptor> _interceptorList = [];
 
   static ReactiveRouterDelegate? _getInstance() {
-    if (_instance == null) {
-      _instance = ReactiveRouterDelegate();
-    }
+    _instance ??= ReactiveRouterDelegate();
     return _instance;
   }
 
-  void init(WidgetHandler notfoundPageBuilder) {
-    _pageMap[NOT_FOUND_PATH] = ReactiveRouterPage(
-        key: ValueKey(NOT_FOUND_PATH),
-        name: NOT_FOUND_PATH,
-        handler: notfoundPageBuilder);
+  void init(WidgetHandler pageBuilder) {
+    _pageMap[NOT_FOUND_PATH] =
+        RouterMatch(handler: pageBuilder, path: NOT_FOUND_PATH);
   }
-
-  ///路由栈维护列表
-  List<String> _routeStack = [];
 
   ///仅可查看的路由栈(不可直接进行操作)
-  List<String> get stack => List.unmodifiable(_routeStack);
+  List<String> get stack =>
+      List.unmodifiable(_pageStack.map((e) => e.path).toList());
 
-  List<ReactiveRouterPage> _pageStack = [];
+  List<RouterMatch> _pageStack = <RouterMatch>[];
+
+  final GlobalKey<NavigatorState> _key = GlobalKey<NavigatorState>();
 
   ///页面映射表
-  Map<String, ReactiveRouterPage> _pageMap = {};
+  Map<String, RouterMatch> _pageMap = {};
 
   @override
-  GlobalKey<NavigatorState>? get navigatorKey => key;
+  GlobalKey<NavigatorState>? get navigatorKey => _key;
 
-  ///根据context获取单例
   static ReactiveRouterDelegate of(BuildContext context) {
-    assert(Router.of(context).routerDelegate is ReactiveRouterDelegate);
-    return Router.of(context).routerDelegate as ReactiveRouterDelegate;
+    final InheritedRootNavigator? inherited =
+        context.dependOnInheritedWidgetOfExactType<InheritedRootNavigator>();
+    assert(inherited != null, 'No Router found in context');
+    return inherited!.delegate;
   }
 
   @override
-  void addListener(VoidCallback listener) {
-    super.addListener(listener);
-  }
-
-  @override
-  String? get currentConfiguration =>
-      _routeStack.isNotEmpty ? _routeStack.last : null;
+  RouterMatch? get currentConfiguration =>
+      _pageStack.isNotEmpty ? _pageStack.last : null;
 
   @override
   Widget build(BuildContext context) {
-    return Navigator(
-        key: navigatorKey, onPopPage: _onPopPage, pages: _pageStack.toList());
+    List<Page<dynamic>> pages = [];
+    _pageStack.forEach((e) {
+      var key = ValueKey<String>(e.path!);
+      pages.add(CupertinoPage(
+          key: key,
+          child: e.handler!.call(e.parameter),
+          name: e.path,
+          arguments: e.parameter ?? {},
+          restorationId: key.value));
+    });
+    return InheritedRootNavigator(
+        child: Navigator(key: _key, onPopPage: _onPopPage, pages: pages),
+        delegate: this);
   }
 
   ///跳转页面
@@ -76,7 +78,7 @@ class ReactiveRouterDelegate extends RouterDelegate<String>
   ///isSingleTop: 如新页面地址与当前页面地址一致，则退出当前页面，且进入新页面
   ///isSingleTask: 如路由栈中存在页面地址，则退出所有存在的地址，并将地址推到栈顶，
   ///generateRoute: 自定义过场动画效果
-  Future push<T>(String path,
+  Future? push<T>(String path,
       {Map<String, dynamic>? parameter,
       bool replace = false,
       bool clearStack = false,
@@ -99,41 +101,35 @@ class ReactiveRouterDelegate extends RouterDelegate<String>
         }
       }
       if (replace) {
-        _routeStack.removeLast();
         _pageStack.removeLast();
       }
       if (clearStack) {
-        _routeStack.clear();
         _pageStack.clear();
       }
       if (isSingleTop) {
-        if (_routeStack.last == path) {
-          _routeStack.removeLast();
+        if (_pageStack.last.path == path) {
           _pageStack.removeLast();
         }
       }
       if (isSingleTask) {
-        _routeStack.removeWhere((element) => element == path);
-        _pageStack.removeWhere((element) => element.name == path);
+        _pageStack
+            .removeWhere((element) => element.route?.settings.name == path);
       }
-      _routeStack.add(path);
-      var page = _pageMap[path]!.clone()..parameter = parameter;
-      page..route = generateRoute?.call(page, _pageMap[path]?.handler)..completer = Completer();
-      _pageStack.add(page);
+      var page = _pageMap[path]?.clone(path: path, parameter: parameter);
+      _pageStack.add(page!);
       notifyListeners();
-      return page.completer.future;
+      return page.route?.popped;
     } else {
-      _routeStack.add(NOT_FOUND_PATH);
-      _pageStack.add(_pageMap[NOT_FOUND_PATH]!.clone()..completer = Completer());
+      _pageStack.add(_pageMap[NOT_FOUND_PATH]!.clone());
       notifyListeners();
       return Future.value();
     }
   }
 
   bool _onPopPage(Route<dynamic> route, dynamic result) {
-    if (_routeStack.last == route.settings.name) {
-      _routeStack.removeLast();
+    if (_pageStack.last.path == route.settings.name) {
       _pageStack.removeLast();
+      notifyListeners();
       return route.didPop(result);
     } else {
       return false;
@@ -146,50 +142,36 @@ class ReactiveRouterDelegate extends RouterDelegate<String>
   ///result: 页面回退时携带的结果
   bool pop<T>({bool isUntil = false, String? untilName, T? result}) {
     if (isUntil) {
-      int index = _routeStack.lastIndexWhere((element) => element == untilName);
+      int index =
+          _pageStack.lastIndexWhere((element) => element.path == untilName);
       if (index == -1) {
         return false;
       } else {
-        _routeStack = _routeStack.sublist(0, index + 1);
         _pageStack = _pageStack.sublist(0, index + 1);
         return true;
       }
     } else {
-      if (_routeStack.length > 1) {
-        _pageStack.last.completer.complete(result);
-        _routeStack.removeLast();
+      if (_pageStack.length > 1) {
+        var route = _pageStack.last.route;
         _pageStack.removeLast();
         notifyListeners();
-        return true;
+        return route!.didPop(result);
       } else {
-        _pageStack.last.completer.complete(result);
         return false;
       }
     }
   }
 
   @override
-  void removeListener(VoidCallback listener) {
-    super.removeListener(listener);
-  }
-
-  @override
-  Future<void> setNewRoutePath(String configuration) {
-    _routeStack
-      ..clear()
-      ..add(configuration);
+  Future<void> setNewRoutePath(RouterMatch? configuration) {
     _pageStack
       ..clear()
-      ..add(_pageMap[configuration] ??
-          ReactiveRouterPage(
-              key: ValueKey(NOT_FOUND_PATH),
-              name: NOT_FOUND_PATH,
-              handler: pageBuilder));
+      ..add(configuration!);
     return SynchronousFuture<void>(null);
   }
 
   @override
-  Future<void> setInitialRoutePath(String configuration) {
+  Future<void> setInitialRoutePath(RouterMatch? configuration) {
     return setNewRoutePath(configuration);
   }
 
@@ -199,15 +181,13 @@ class ReactiveRouterDelegate extends RouterDelegate<String>
   }
 
   ReactiveRouterDelegate addRouteMap(String path,
-      {Map<String, dynamic>? parameter,
-      required WidgetHandler handler,
-      Route? Function(RouteSettings settings, WidgetHandler? handler)?
-          generateRoute}) {
-    var page =
-        ReactiveRouterPage(key: ValueKey(path), name: path, handler: handler);
-    page.route = generateRoute?.call(page, handler);
-    _pageMap[path] = page;
+      {required WidgetHandler handler}) {
+    _pageMap[path] = RouterMatch(path: path, handler: handler);
     return this;
+  }
+
+  RouterMatch getMatch(String url) {
+    return _pageMap[url]!;
   }
 
   ReactiveRouterDelegate removeRouteMap(String path) {
