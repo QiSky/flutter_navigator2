@@ -7,15 +7,19 @@ import 'package:reactive_router_example/pages/main_page.dart';
 
 void main() {
   ReactiveRouterDelegate.instance
-      .init((arguments, {Key? key}) => NTFoundPage());
-  ReactiveRouterDelegate.instance.addRouteMap("/",
+      .init("404", (arguments, {Key? key}) => NTFoundPage());
+  ReactiveRouterDelegate.instance.addRouteMap(
+      name: 'main',
+      path: "/",
       handler: (Map<String, dynamic>? arguments) {
-    return const MainPage();
-  });
-  ReactiveRouterDelegate.instance.addRouteMap("/a",
+        return const MainPage();
+      });
+  ReactiveRouterDelegate.instance.addRouteMap(
+      name: 'index',
+      path: "/a",
       handler: (Map<String, dynamic>? arguments) {
-    return const IndexPage();
-  });
+        return const IndexPage();
+      });
   runApp(MyApp());
 }
 

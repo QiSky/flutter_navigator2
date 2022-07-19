@@ -23,14 +23,13 @@ class ReactiveRouterDelegate extends RouterDelegate<RouterMatch>
     return _instance;
   }
 
-  void init(WidgetHandler pageBuilder) {
+  void init(String name, WidgetHandler pageBuilder) {
     _pageMap[NOT_FOUND_PATH] =
-        RouterMatch(handler: pageBuilder, path: NOT_FOUND_PATH);
+        RouterMatch(name: name, handler: pageBuilder, path: NOT_FOUND_PATH);
   }
 
   ///仅可查看的路由栈(不可直接进行操作)
-  List<String> get stack =>
-      List.unmodifiable(_pageStack.map((e) => e.path).toList());
+  List<RouterMatch> get stack => List.unmodifiable(_pageStack);
 
   List<RouterMatch> _pageStack = <RouterMatch>[];
 
@@ -45,7 +44,6 @@ class ReactiveRouterDelegate extends RouterDelegate<RouterMatch>
   static ReactiveRouterDelegate of(BuildContext context) {
     final InheritedRootNavigator? inherited =
         context.dependOnInheritedWidgetOfExactType<InheritedRootNavigator>();
-    assert(inherited != null, 'No Router found in context');
     return inherited!.delegate;
   }
 
@@ -180,9 +178,11 @@ class ReactiveRouterDelegate extends RouterDelegate<RouterMatch>
     return this;
   }
 
-  ReactiveRouterDelegate addRouteMap(String path,
-      {required WidgetHandler handler}) {
-    _pageMap[path] = RouterMatch(path: path, handler: handler);
+  ReactiveRouterDelegate addRouteMap(
+      {required String name,
+      required String path,
+      required WidgetHandler handler}) {
+    _pageMap[path] = RouterMatch(name: name, path: path, handler: handler);
     return this;
   }
 
