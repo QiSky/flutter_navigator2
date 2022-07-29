@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 
 class RouterMatch {
@@ -15,11 +17,14 @@ class RouterMatch {
 
   Route? route;
 
+  late final Completer completer;
+
   RouterMatch(
       {required this.name, required this.path, this.parameter, this.handler}) {
     route = CupertinoPageRoute(
         settings: RouteSettings(name: path, arguments: parameter),
         builder: (BuildContext context) => handler!.call(parameter));
+    completer = Completer();
   }
 
   RouterMatch clone(

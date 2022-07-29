@@ -76,7 +76,7 @@ class ReactiveRouterDelegate extends RouterDelegate<RouterMatch>
   ///isSingleTop: 如新页面地址与当前页面地址一致，则退出当前页面，且进入新页面
   ///isSingleTask: 如路由栈中存在页面地址，则退出所有存在的地址，并将地址推到栈顶，
   ///generateRoute: 自定义过场动画效果
-  Future? push<T>(String path,
+  Future push<T>(String path,
       {Map<String, dynamic>? parameter,
       bool replace = false,
       bool clearStack = false,
@@ -116,7 +116,7 @@ class ReactiveRouterDelegate extends RouterDelegate<RouterMatch>
       var page = _pageMap[path]?.clone(path: path, parameter: parameter);
       _pageStack.add(page!);
       notifyListeners();
-      return page.route?.popped;
+      return page.completer.future;
     } else {
       _pageStack.add(_pageMap[NOT_FOUND_PATH]!.clone());
       notifyListeners();
@@ -146,14 +146,16 @@ class ReactiveRouterDelegate extends RouterDelegate<RouterMatch>
         return false;
       } else {
         _pageStack = _pageStack.sublist(0, index + 1);
+        notifyListeners();
         return true;
       }
     } else {
       if (_pageStack.length > 1) {
-        var route = _pageStack.last.route;
+        var match = _pageStack.last;
         _pageStack.removeLast();
         notifyListeners();
-        return route!.didPop(result);
+        match.completer.complete(result);
+        return match.route!.didPop(result);
       } else {
         return false;
       }

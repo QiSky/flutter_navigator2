@@ -1,11 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:reactive_router/annotation/page_annotation.dart';
 import 'package:reactive_router/delegate/reactive_router_delegate.dart';
 
-mixin Not {
-  final int a = 0;
-}
-
+@PageAnnotation(name: 'main', path: '/')
 class MainPage extends StatefulWidget {
   const MainPage({Key? key}) : super(key: key);
 
@@ -42,7 +40,9 @@ class _MainPageState extends State<MainPage> {
       body: Center(
         child: CupertinoButton(
           onPressed: () {
-            ReactiveRouterDelegate.of(context).push("/a");
+            ReactiveRouterDelegate.of(context).push("/a").then((value) {
+              print(value);
+            });
           },
           child: Text("点击"),
         ),

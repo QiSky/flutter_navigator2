@@ -6,7 +6,8 @@ class IndexPage extends StatefulWidget {
   @override
   State<StatefulWidget> createState() => _MainPageState();
 
-  const IndexPage({Key? key}) : super(key: key);
+  const IndexPage({Key? key, Map<String, dynamic>? arguments})
+      : super(key: key);
 }
 
 class _MainPageState extends State<IndexPage> {
@@ -24,7 +25,8 @@ class _MainPageState extends State<IndexPage> {
       body: Center(
         child: CupertinoButton(
           onPressed: () {
-            ReactiveRouterDelegate.of(context).push("/b");
+            ReactiveRouterDelegate.of(context).pop(result: 'a');
+            // ReactiveRouterDelegate.of(context).push("/b");
           },
           child: Text("点击"),
         ),
