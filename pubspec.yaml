@@ -1,5 +1,5 @@
 name: reactive_router
-description: Reactive-router Flutter project.
+description: Reactive-router Flutter project base goRouter.
 version: 0.0.1
 homepage:
 
@@ -12,11 +12,11 @@ dependencies:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
+  go_router: ^4.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  mobx_codegen:
   build_runner:
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
